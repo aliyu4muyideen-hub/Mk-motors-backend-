@@ -3,12 +3,25 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const path = require("path");
+const db = require("./db");
 
 const vehiclesRouter = require("./routes/vehicles");
 const leadsRouter = require("./routes/leads");
 const adminRouter = require("./routes/admin");
 const settingsRouter = require("./routes/settings");
 const subscribersRouter = require("./routes/subscribers");
+
+// Auto-seed sample vehicles the first time the server ever starts
+// (safe to leave in forever — it only runs if the vehicles table is empty)
+try {
+  const count = db.prepare("SELECT COUNT(*) AS n FROM vehicles").get().n;
+  if (count === 0) {
+    console.log("No vehicles found — seeding sample data...");
+    require("./seed");
+  }
+} catch (err) {
+  console.error("Auto-seed check failed:", err.message);
+}
 
 const app = express();
 
@@ -17,7 +30,6 @@ app.use(cors({ origin: allowedOrigins.length ? allowedOrigins : "*" }));
 app.use(express.json());
 app.use(morgan("dev"));
 
-// Uploaded vehicle photos are served from here, e.g. GET /uploads/<filename>
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.use("/api/vehicles", vehiclesRouter);
@@ -28,7 +40,6 @@ app.use("/api/subscribers", subscribersRouter);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
-// centralized error handler (catches multer file errors, etc.)
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ error: err.message || "Something went wrong." });
