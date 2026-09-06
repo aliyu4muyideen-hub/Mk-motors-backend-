@@ -1,3 +1,4 @@
+const visionRouter = require("./routes/vision");
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
@@ -37,6 +38,7 @@ app.use("/api/leads", leadsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/settings", settingsRouter);
 app.use("/api/subscribers", subscribersRouter);
+app.use("/api/vision", visionRouter);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
