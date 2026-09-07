@@ -31,4 +31,16 @@ async function notifyNewArrival(vehicle) {
   );
 }
 
-module.exports = { notifyNewArrival };
+// Fire-and-forget: emails YOU (the dealer) when a customer submits a chat message,
+// test-drive request, trade-in request, or contact form. Safe to call even if email
+// isn't configured or ADMIN_NOTIFY_EMAIL isn't set — it just does nothing in that case.
+async function notifyAdmin(subject, text) {
+  const transporter = getTransporter();
+  const to = process.env.ADMIN_NOTIFY_EMAIL || process.env.SMTP_USER;
+  if (!transporter || !to) return;
+
+  const from = process.env.FROM_EMAIL || process.env.SMTP_USER;
+  await transporter.sendMail({ from, to, subject, text });
+}
+
+module.exports = { notifyNewArrival, notifyAdmin };
