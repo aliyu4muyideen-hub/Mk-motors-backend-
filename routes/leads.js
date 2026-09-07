@@ -1,6 +1,7 @@
 const express = require("express");
 const db = require("../db");
 const { requireAdmin } = require("../middleware/auth");
+const { notifyAdmin } = require("../utils/mailer");
 
 const router = express.Router();
 
@@ -15,6 +16,10 @@ router.post("/test-drive", (req, res) => {
     return res.status(400).json({ error: "Name, email, phone, date, and time are required." });
   }
   saveLead("test_drive", { name, email, phone, date, time, vehicleId, message });
+  notifyAdmin(
+    `New test drive request — ${name}`,
+    `${name} wants to test drive vehicle ${vehicleId || "(not specified)"} on ${date} at ${time}.\n\nPhone: ${phone}\nEmail: ${email}\nMessage: ${message || "(none)"}`
+  ).catch((err) => console.error("Admin notify failed:", err.message));
   res.status(201).json({ ok: true });
 });
 
@@ -25,6 +30,10 @@ router.post("/trade-in", (req, res) => {
     return res.status(400).json({ error: "Make, model, year, name, and contact info are required." });
   }
   saveLead("trade_in", { make, model, year, mileage, condition, name, contact });
+  notifyAdmin(
+    `New trade-in request — ${name}`,
+    `${name} wants a trade-in estimate for a ${year} ${make} ${model} (${mileage || "?"} mi, ${condition || "condition not given"}).\n\nContact: ${contact}`
+  ).catch((err) => console.error("Admin notify failed:", err.message));
   res.status(201).json({ ok: true });
 });
 
@@ -35,6 +44,10 @@ router.post("/contact", (req, res) => {
     return res.status(400).json({ error: "Name, email, and message are required." });
   }
   saveLead("contact", { name, email, phone, message });
+  notifyAdmin(
+    `New contact message — ${name}`,
+    `${name} sent a message:\n\n"${message}"\n\nEmail: ${email}\nPhone: ${phone || "(none)"}`
+  ).catch((err) => console.error("Admin notify failed:", err.message));
   res.status(201).json({ ok: true });
 });
 
@@ -45,6 +58,10 @@ router.post("/chat", (req, res) => {
     return res.status(400).json({ error: "Name and message are required." });
   }
   saveLead("chat", { name, message, email });
+  notifyAdmin(
+    `New chat message — ${name}`,
+    `${name} sent a chat message:\n\n"${message}"${email ? `\n\nEmail: ${email}` : ""}`
+  ).catch((err) => console.error("Admin notify failed:", err.message));
   res.status(201).json({ ok: true });
 });
 
