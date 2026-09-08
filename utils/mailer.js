@@ -43,4 +43,16 @@ async function notifyAdmin(subject, text) {
   await transporter.sendMail({ from, to, subject, text });
 }
 
-module.exports = { notifyNewArrival, notifyAdmin };
+// Sends a direct reply email to a customer who left their email address on a
+// chat message, contact form, etc. Throws if SMTP isn't configured — the caller
+// should show that error to the dealer rather than pretending it worked.
+async function sendReply(toEmail, message) {
+  const transporter = getTransporter();
+  if (!transporter) {
+    throw new Error("Email isn't set up yet — add SMTP_HOST, SMTP_USER, and SMTP_PASS to your backend's environment variables to enable replies.");
+  }
+  const from = process.env.FROM_EMAIL || process.env.SMTP_USER;
+  await transporter.sendMail({ from, to: toEmail, subject: "Reply from MK Motors", text: message });
+}
+
+module.exports = { notifyNewArrival, notifyAdmin, sendReply };
