@@ -1,7 +1,7 @@
 const express = require("express");
 const db = require("../db");
 const { requireAdmin } = require("../middleware/auth");
-const { notifyAdmin } = require("../utils/mailer");
+const { notifyAdmin, sendReply } = require("../utils/mailer");
 
 const router = express.Router();
 
@@ -69,6 +69,36 @@ router.post("/chat", (req, res) => {
 router.get("/", requireAdmin, (req, res) => {
   const rows = db.prepare("SELECT * FROM leads ORDER BY createdAt DESC").all();
   res.json(rows.map((r) => ({ ...r, payload: JSON.parse(r.payload) })));
+});
+
+/* ---- POST /api/leads/:id/reply  (admin)  body: { message } ----
+   Emails the customer directly using the email they left on the message.
+   Fails clearly if they didn't leave one, or if SMTP isn't configured. */
+router.post("/:id/reply", requireAdmin, async (req, res) => {
+  const { message } = req.body;
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: "Reply message is required." });
+  }
+
+  const row = db.prepare("SELECT * FROM leads WHERE id = ?").get(req.params.id);
+  if (!row) return res.status(404).json({ error: "Message not found." });
+
+  const payload = JSON.parse(row.payload);
+  if (!payload.email) {
+    return res.status(400).json({ error: "This message doesn't have an email address to reply to." });
+  }
+
+  try {
+    await sendReply(payload.email, message.trim());
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  const replies = Array.isArray(payload.replies) ? payload.replies : [];
+  replies.push({ message: message.trim(), sentAt: new Date().toISOString() });
+  db.prepare("UPDATE leads SET payload = ? WHERE id = ?").run(JSON.stringify({ ...payload, replies }), row.id);
+
+  res.json({ ok: true });
 });
 
 module.exports = router;
